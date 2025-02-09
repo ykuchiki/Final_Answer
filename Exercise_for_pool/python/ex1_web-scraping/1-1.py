@@ -19,13 +19,7 @@ data_list = []
 page = 1
 
 while len(data_list) < 50:
-    if page == 1:
-        page_url = base_url
-    else:
-        page_url = f"{base_url}?p={page}"
-    print("【ページ取得】", page_url)
-    
-    res = requests.get(page_url, headers=headers)
+    res = requests.get(base_url, headers=headers)
     
     soup = BeautifulSoup(res.text, "html.parser")
     # 店舗カードの抽出（class="style_restaurant__SeIVn"）
@@ -73,7 +67,23 @@ while len(data_list) < 50:
         print(f"累計レコード数: {len(data_list)}")
         if len(data_list) >= 50:
             break
-    page += 1
+        
+    # 「次ページ」ボタンを取得する（alt属性に「次」が含まれているかで判定）
+    next_page_img = soup.find("img", class_="style_nextIcon__M_Me_", alt=re.compile("次"))
+    if next_page_img:
+        next_page_tag = next_page_img.find_parent("a")
+        if next_page_tag and "href" in next_page_tag.attrs:
+            next_page_url = next_page_tag["href"]
+            base_url = "https://r.gnavi.co.jp" + next_page_url
+            page += 1
+            time.sleep(3)
+        else:
+            print("次ページリンクが見つからなかったため終了します。")
+            break
+    else:
+        print("次ページのボタンが見つからなかったため終了します。")
+        break
+        
 
 df = pd.DataFrame(data_list, columns=["店舗名", "電話番号", "メールアドレス", "都道府県", "市区町村", "番地", "建物名", "URL", "SSL"])
 df.to_csv("1-1.csv", index=False, encoding="utf-8-sig")

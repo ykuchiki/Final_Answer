@@ -1,4 +1,5 @@
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -39,19 +40,18 @@ options = Options()
 options.add_argument("--headless")
 options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                      "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-driver = webdriver.Chrome(options=options)
+# driver = webdriver.Chrome(options=options)
+service = Service(executable_path="Exercise_for_pool/python/ex1_web-scraping/chromedriver")
+driver = webdriver.Chrome(service=service, options=options)
+
 
 data_list = []
 page = 1
 base_url = "https://r.gnavi.co.jp/city/kumamoto/cwtav8620100/rs/"
+driver.get(base_url)
 
 while len(data_list) < 50:
-    if page == 1:
-        page_url = base_url
-    else:
-        page_url = f"{base_url}?p={page}"
-    print("【ページ取得】", page_url)
-    driver.get(page_url)
+    print(f"ページ {page} の読み込み")
     
     try:
         WebDriverWait(driver, 10).until(
@@ -160,7 +160,7 @@ while len(data_list) < 50:
             shop["SSL"] = "TRUE" if site_url.startswith("https://") else "FALSE"
             print(f"[ページ{page} カード{i}] 公式サイト: {shop['URL']}, SSL: {shop['SSL']}")
         except Exception as e:
-            print(f"[ページ{page} カード{i}] 公式サイト抽出エラー: {e}")
+            print(f"[ページ{page} カード{i}] 公式サイトのURLを抽出できませんでした")
             shop["URL"] = ""
             shop["SSL"] = ""
         
@@ -172,7 +172,18 @@ while len(data_list) < 50:
         
         if len(data_list) >= 50:
             break
-    page += 1
+
+    # 次のページ(「>」ボタン)をクリック
+    try:
+        next_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//a[.//img[contains(@alt, '次')]]"))
+        )
+        driver.execute_script("arguments[0].click();", next_button)
+        time.sleep(3)
+        page += 1
+    except Exception as e:
+        print("次ページボタンが見つからない、またはクリックできない:", e)
+        break
 
 df = pd.DataFrame(data_list, columns=["店舗名", "電話番号", "メールアドレス", "都道府県", "市区町村", "番地", "建物名", "URL", "SSL"])
 df.to_csv("1-2.csv", index=False, encoding="utf-8-sig")
